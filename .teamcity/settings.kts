@@ -12,6 +12,10 @@ object MssqlTestcontainers : BuildType({
     id("MssqlTestcontainers")
     name = "MSSQL Testcontainers"
 
+    params {
+        param("build.network.name", "tc-%teamcity.agent.name%-%teamcity.buildType.id%")
+    }
+
     vcs {
         root(DslContext.settingsRoot)
     }
@@ -25,7 +29,7 @@ object MssqlTestcontainers : BuildType({
                 set -eu
 
                 owner="teamcity-mssql-sample"
-                network="tc-%teamcity.agent.name%-%teamcity.buildType.id%"
+                network="%build.network.name%"
 
                 if ! docker network inspect "${'$'}network" >/dev/null 2>&1; then
                   docker network create \
@@ -45,7 +49,7 @@ object MssqlTestcontainers : BuildType({
             dockerImage = "mcr.microsoft.com/dotnet/sdk:10.0"
             dockerPull = true
             dockerRunParameters = """
-                --network tc-%teamcity.agent.name%-%teamcity.buildType.id%
+                --network %build.network.name%
                 --label tc.owner=teamcity-mssql-sample
                 --label tc.agent.name=%teamcity.agent.name%
                 --label tc.buildType.id=%teamcity.buildType.id%
@@ -54,7 +58,7 @@ object MssqlTestcontainers : BuildType({
                 -e DOCKER_HOST=unix:///var/run/docker.sock
                 -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
                 -e TESTCONTAINERS_HOST_OVERRIDE=host.containers.internal
-                -e TC_BUILD_NETWORK=tc-%teamcity.agent.name%-%teamcity.buildType.id%
+                -e TC_BUILD_NETWORK=%build.network.name%
                 -e TC_BUILD_ID=%teamcity.build.id%
                 -e TC_AGENT_NAME=%teamcity.agent.name%
                 -e TC_BUILD_TYPE_ID=%teamcity.buildType.id%
