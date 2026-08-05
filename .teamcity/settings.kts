@@ -28,14 +28,13 @@ object MssqlTestcontainers : BuildType({
                 #!/bin/sh
                 set -eu
 
-                owner="teamcity-mssql-sample"
+                owner="%teamcity.buildType.id%"
                 network="%build.network.name%"
 
                 if ! docker network inspect "${'$'}network" >/dev/null 2>&1; then
                   docker network create \
                     --label "tc.owner=${'$'}owner" \
                     --label "tc.agent.name=%teamcity.agent.name%" \
-                    --label "tc.buildType.id=%teamcity.buildType.id%" \
                     "${'$'}network"
                 fi
             """.trimIndent()
@@ -50,9 +49,8 @@ object MssqlTestcontainers : BuildType({
             dockerPull = true
             dockerRunParameters = """
                 --network %build.network.name%
-                --label tc.owner=teamcity-mssql-sample
+                --label tc.owner=%teamcity.buildType.id%
                 --label tc.agent.name=%teamcity.agent.name%
-                --label tc.buildType.id=%teamcity.buildType.id%
                 --label tc.build.id=%teamcity.build.id%
                 -v /run/user/1000/podman/podman.sock:/var/run/docker.sock
                 -e DOCKER_HOST=unix:///var/run/docker.sock
@@ -61,8 +59,7 @@ object MssqlTestcontainers : BuildType({
                 -e TC_BUILD_NETWORK=%build.network.name%
                 -e TC_BUILD_ID=%teamcity.build.id%
                 -e TC_AGENT_NAME=%teamcity.agent.name%
-                -e TC_BUILD_TYPE_ID=%teamcity.buildType.id%
-                -e TC_RESOURCE_OWNER=teamcity-mssql-sample
+                -e TC_RESOURCE_OWNER=%teamcity.buildType.id%
             """.trimIndent().replace("\n", " ")
         }
     }

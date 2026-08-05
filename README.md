@@ -13,6 +13,6 @@ The TeamCity project configuration lives in `.teamcity/settings.kts`. In the dem
 git://git-repo:9418/sample-project.git
 ```
 
-The build agent requires access to its rootless Podman API socket. Transient resources carry owner, agent, build-type, and build labels. Testcontainers' Ryuk resource reaper removes transient containers, including after the test process terminates unexpectedly.
+The build agent requires access to its rootless Podman API socket. `tc.owner` is the TeamCity build-type ID; agent and transient build labels provide host and run context. Testcontainers' Ryuk resource reaper removes transient containers, including after the test process terminates unexpectedly.
 
 The Compose stack uses `teamcity-control` only for server-to-agent traffic. Test runners do not join that network. The `build.network.name` parameter defaults to `tc-<agent name>-<build-type id>`; the build idempotently creates that network and leaves it in place for later builds. Renamed agents, build configurations, or parameter values can leave obsolete networks that an administrator may remove manually.
