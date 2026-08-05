@@ -6,3 +6,7 @@ TestResults/
 .teamcity/target/
 *.user
 *.suo
+
+# Workspace-local Codex and Git-daemon state
+.agents/
+git/

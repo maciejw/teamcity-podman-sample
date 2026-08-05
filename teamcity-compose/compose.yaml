@@ -1,0 +1,68 @@
+name: teamcity
+
+services:
+  server:
+    image: docker.io/jetbrains/teamcity-server:2026.1.3-linux
+    container_name: teamcity-server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8111:8111"
+    volumes:
+      - server-data:/data/teamcity_server/datadir
+      - server-logs:/opt/teamcity/logs
+    networks:
+      - control
+
+  git-repo:
+    image: docker.io/alpine:3.22
+    container_name: teamcity-git
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        apk add --no-cache git-daemon &&
+        git config --system --add safe.directory '*' &&
+        exec git daemon
+        --reuseaddr
+        --verbose
+        --export-all
+        --base-path=/git
+        --user=nobody
+        --group=nogroup
+        /git
+    volumes:
+      - C:/setup/git:/git:ro
+    networks:
+      - control
+
+  agent:
+    image: docker.io/jetbrains/teamcity-agent:2026.1.3-linux
+    container_name: teamcity-agent
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      SERVER_URL: http://server:8111
+      DOCKER_HOST: unix:///var/run/docker.sock
+    group_add:
+      - "0"
+    volumes:
+      - agent-config:/data/teamcity_agent/conf
+      - /run/user/1000/podman/podman.sock:/var/run/docker.sock
+      - /opt/buildagent/work:/opt/buildagent/work
+      - /opt/buildagent/temp:/opt/buildagent/temp
+      - /opt/buildagent/logs:/opt/buildagent/logs
+      - /opt/buildagent/tools:/opt/buildagent/tools
+      - /opt/buildagent/plugins:/opt/buildagent/plugins
+      - /opt/buildagent/system:/opt/buildagent/system
+    networks:
+      - control
+
+volumes:
+  server-data:
+  server-logs:
+  agent-config:
+
+networks:
+  control:
+    name: teamcity-control
