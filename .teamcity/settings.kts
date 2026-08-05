@@ -43,10 +43,9 @@ object MssqlTestcontainers : BuildType({
         dotnetTest {
             id = "run_integration_tests"
             name = "Run .NET tests in isolated SDK container"
-            projects = "Sample.sln"
+            projects = "Sample.slnx"
             configuration = "Release"
             dockerImage = "mcr.microsoft.com/dotnet/sdk:10.0"
-            dockerPull = true
             dockerRunParameters = """
                 --network %build.network.name%
                 --label tc.owner=%system.teamcity.buildType.id%
@@ -54,12 +53,7 @@ object MssqlTestcontainers : BuildType({
                 --label tc.build.id=%teamcity.build.id%
                 -v /run/user/1000/podman/podman.sock:/var/run/docker.sock
                 -e DOCKER_HOST=unix:///var/run/docker.sock
-                -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
                 -e TESTCONTAINERS_HOST_OVERRIDE=host.containers.internal
-                -e TC_BUILD_NETWORK=%build.network.name%
-                -e TC_BUILD_ID=%teamcity.build.id%
-                -e TC_AGENT_NAME=%teamcity.agent.name%
-                -e TC_RESOURCE_OWNER=%system.teamcity.buildType.id%
             """.trimIndent().replace("\n", " ")
         }
     }
