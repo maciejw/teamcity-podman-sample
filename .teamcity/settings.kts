@@ -27,8 +27,12 @@ object MssqlTestcontainers : BuildType({
                 owner="teamcity-mssql-sample"
                 network="tc-build-%teamcity.build.id%"
 
-                docker ps -aq --filter "label=tc.owner=${'$'}owner" | xargs -r docker rm -f
-                docker network ls -q --filter "label=tc.owner=${'$'}owner" | xargs -r docker network rm
+                docker ps -aq \
+                  --filter "label=tc.owner=${'$'}owner" \
+                  --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker rm -f
+                docker network ls -q \
+                  --filter "label=tc.owner=${'$'}owner" \
+                  --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker network rm
                 docker network create \
                   --label "tc.owner=${'$'}owner" \
                   --label "tc.build.id=%teamcity.build.id%" \
@@ -66,7 +70,9 @@ object MssqlTestcontainers : BuildType({
                 #!/bin/sh
                 set -eu
 
-                docker ps -aq --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker rm -f
+                docker ps -aq \
+                  --filter "label=tc.owner=teamcity-mssql-sample" \
+                  --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker rm -f
                 docker network rm "tc-build-%teamcity.build.id%" 2>/dev/null || true
             """.trimIndent()
         }
