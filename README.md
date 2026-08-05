@@ -7,10 +7,10 @@ This .NET 10 integration-test project demonstrates an isolated TeamCity build:
 - The build and its SQL Server Testcontainer share a uniquely named per-build network.
 - The test attaches SQL Server to that existing network and reaches it by its build-specific container name.
 
-The TeamCity project configuration lives in `.teamcity/settings.kts`. Its settings VCS root must use:
+The TeamCity project configuration lives in `.teamcity/settings.kts`. In the demo Compose network, its settings VCS root must use:
 
 ```text
-file:///vcs/sample-project.git
+git://git-repo:9418/sample-project.git
 ```
 
 The build agent requires access to its rootless Podman API socket. The build creates and removes resources labeled with `tc.owner` and `tc.build.id` so cleanup is scoped to the current agent and build.
