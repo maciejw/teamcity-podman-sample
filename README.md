@@ -4,7 +4,7 @@ This .NET 10 integration-test project demonstrates an isolated TeamCity build:
 
 - TeamCity checks out this Git repository.
 - The .NET test step runs in an ephemeral SDK container.
-- The build and its SQL Server Testcontainer share a uniquely named per-build network.
+- Each agent/build-configuration pair has one persistent network shared by its SDK runner and SQL Server Testcontainer.
 - The test attaches SQL Server to that existing network and reaches it by its build-specific container name.
 
 The TeamCity project configuration lives in `.teamcity/settings.kts`. In the demo Compose network, its settings VCS root must use:
@@ -13,6 +13,6 @@ The TeamCity project configuration lives in `.teamcity/settings.kts`. In the dem
 git://git-repo:9418/sample-project.git
 ```
 
-The build agent requires access to its rootless Podman API socket. The build creates and removes resources labeled with `tc.owner` and `tc.build.id` so cleanup is scoped to the current agent and build.
+The build agent requires access to its rootless Podman API socket. Transient resources carry owner, agent, build-type, and build labels. Testcontainers' Ryuk resource reaper removes transient containers, including after the test process terminates unexpectedly.
 
-The Compose stack uses `teamcity-control` only for server-to-agent traffic. Test runners do not join that network; the build configuration creates `tc-build-<build id>` for each run and removes it in an always-run cleanup step.
+The Compose stack uses `teamcity-control` only for server-to-agent traffic. Test runners do not join that network. The build configuration idempotently creates `tc-<agent name>-<build-type id>` and leaves it in place for later builds. Renamed agents or build configurations can leave obsolete networks that an administrator may remove manually.

@@ -19,24 +19,21 @@ object MssqlTestcontainers : BuildType({
     steps {
         script {
             id = "prepare_build_network"
-            name = "Prepare isolated build network"
+            name = "Ensure persistent build network"
             scriptContent = """
                 #!/bin/sh
                 set -eu
 
                 owner="teamcity-mssql-sample"
-                network="tc-build-%teamcity.build.id%"
+                network="tc-%teamcity.agent.name%-%teamcity.buildType.id%"
 
-                docker ps -aq \
-                  --filter "label=tc.owner=${'$'}owner" \
-                  --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker rm -f
-                docker network ls -q \
-                  --filter "label=tc.owner=${'$'}owner" \
-                  --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker network rm
-                docker network create \
-                  --label "tc.owner=${'$'}owner" \
-                  --label "tc.build.id=%teamcity.build.id%" \
-                  "${'$'}network"
+                if ! docker network inspect "${'$'}network" >/dev/null 2>&1; then
+                  docker network create \
+                    --label "tc.owner=${'$'}owner" \
+                    --label "tc.agent.name=%teamcity.agent.name%" \
+                    --label "tc.buildType.id=%teamcity.buildType.id%" \
+                    "${'$'}network"
+                fi
             """.trimIndent()
         }
 
@@ -48,33 +45,19 @@ object MssqlTestcontainers : BuildType({
             dockerImage = "mcr.microsoft.com/dotnet/sdk:10.0"
             dockerPull = true
             dockerRunParameters = """
-                --network tc-build-%teamcity.build.id%
+                --network tc-%teamcity.agent.name%-%teamcity.buildType.id%
                 --label tc.owner=teamcity-mssql-sample
+                --label tc.agent.name=%teamcity.agent.name%
+                --label tc.buildType.id=%teamcity.buildType.id%
                 --label tc.build.id=%teamcity.build.id%
                 -v /run/user/1000/podman/podman.sock:/var/run/docker.sock
                 -e DOCKER_HOST=unix:///var/run/docker.sock
                 -e TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
-                -e TESTCONTAINERS_RYUK_DISABLED=true
                 -e TESTCONTAINERS_HOST_OVERRIDE=host.containers.internal
-                -e TC_BUILD_NETWORK=tc-build-%teamcity.build.id%
+                -e TC_BUILD_NETWORK=tc-%teamcity.agent.name%-%teamcity.buildType.id%
                 -e TC_BUILD_ID=%teamcity.build.id%
                 -e TC_RESOURCE_OWNER=teamcity-mssql-sample
             """.trimIndent().replace("\n", " ")
-        }
-
-        script {
-            id = "cleanup_build_resources"
-            name = "Clean isolated build resources"
-            executionMode = BuildStep.ExecutionMode.ALWAYS
-            scriptContent = """
-                #!/bin/sh
-                set -eu
-
-                docker ps -aq \
-                  --filter "label=tc.owner=teamcity-mssql-sample" \
-                  --filter "label=tc.build.id=%teamcity.build.id%" | xargs -r docker rm -f
-                docker network rm "tc-build-%teamcity.build.id%" 2>/dev/null || true
-            """.trimIndent()
         }
     }
 
