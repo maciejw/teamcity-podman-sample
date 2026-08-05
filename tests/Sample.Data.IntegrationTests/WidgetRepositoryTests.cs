@@ -1,6 +1,6 @@
+using DotNet.Testcontainers.Builders;
 using Microsoft.Data.SqlClient;
 using Sample.Data;
-using Testcontainers.MsSql;
 using Xunit;
 
 namespace Sample.Data.IntegrationTests;
@@ -22,9 +22,13 @@ public sealed class WidgetRepositoryTests
         var containerName = $"mssql-{buildId.ToLowerInvariant()}";
         var password = $"Tc!{Guid.NewGuid():N}aA1";
 
-        await using var sqlServer = new MsSqlBuilder(SqlImage)
+        await using var sqlServer = new ContainerBuilder(SqlImage)
             .WithName(containerName)
-            .WithPassword(password)
+            .WithExposedPort(1433)
+            .WithEnvironment("ACCEPT_EULA", "Y")
+            .WithEnvironment("MSSQL_SA_PASSWORD", password)
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted(
+                "/opt/mssql-tools18/bin/sqlcmd", "-C", "-S", "localhost", "-U", "sa", "-P", password, "-Q", "SELECT 1;"))
             .WithLabel("tc.owner", owner)
             .WithLabel("tc.agent.name", agentName)
             .WithLabel("tc.build.id", buildId)

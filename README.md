@@ -6,6 +6,7 @@ This .NET 10 integration-test project demonstrates an isolated TeamCity build:
 - The .NET test step runs in an ephemeral SDK container.
 - Each agent/build-configuration pair has one persistent network shared by its SDK runner and SQL Server Testcontainer.
 - The test attaches SQL Server to that existing network and reaches it by its build-specific container name.
+- SQL Server does not publish port 1433 to the Podman host; it is reachable only through container DNS on the build network.
 
 The TeamCity project configuration lives in `.teamcity/settings.kts`. In the demo Compose network, its settings VCS root must use:
 
