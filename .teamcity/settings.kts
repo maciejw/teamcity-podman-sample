@@ -56,6 +56,8 @@ object MssqlTestcontainers : BuildType({
                 -e TESTCONTAINERS_HOST_OVERRIDE=host.containers.internal
                 -e TC_BUILD_NETWORK=tc-%teamcity.agent.name%-%teamcity.buildType.id%
                 -e TC_BUILD_ID=%teamcity.build.id%
+                -e TC_AGENT_NAME=%teamcity.agent.name%
+                -e TC_BUILD_TYPE_ID=%teamcity.buildType.id%
                 -e TC_RESOURCE_OWNER=teamcity-mssql-sample
             """.trimIndent().replace("\n", " ")
         }

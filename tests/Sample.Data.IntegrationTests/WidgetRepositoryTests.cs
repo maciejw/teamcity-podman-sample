@@ -17,6 +17,8 @@ public sealed class WidgetRepositoryTests
         Assert.False(string.IsNullOrWhiteSpace(networkName), "TC_BUILD_NETWORK must identify the pre-created build network.");
 
         var buildId = Environment.GetEnvironmentVariable("TC_BUILD_ID") ?? "local";
+        var agentName = Environment.GetEnvironmentVariable("TC_AGENT_NAME") ?? "local-agent";
+        var buildTypeId = Environment.GetEnvironmentVariable("TC_BUILD_TYPE_ID") ?? "local-build-type";
         var owner = Environment.GetEnvironmentVariable("TC_RESOURCE_OWNER") ?? "teamcity-mssql-sample";
         var containerName = $"mssql-{buildId.ToLowerInvariant()}";
         var password = $"Tc!{Guid.NewGuid():N}aA1";
@@ -25,6 +27,8 @@ public sealed class WidgetRepositoryTests
             .WithName(containerName)
             .WithPassword(password)
             .WithLabel("tc.owner", owner)
+            .WithLabel("tc.agent.name", agentName)
+            .WithLabel("tc.buildType.id", buildTypeId)
             .WithLabel("tc.build.id", buildId)
             .Build();
 
