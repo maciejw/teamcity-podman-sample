@@ -13,7 +13,7 @@ object MssqlTestcontainers : BuildType({
     name = "MSSQL Testcontainers"
 
     params {
-        param("build.network.name", "tc-%teamcity.agent.name%-%teamcity.buildType.id%")
+        param("build.network.name", "tc-%teamcity.agent.name%-%system.teamcity.buildType.id%")
     }
 
     vcs {
@@ -28,7 +28,7 @@ object MssqlTestcontainers : BuildType({
                 #!/bin/sh
                 set -eu
 
-                owner="%teamcity.buildType.id%"
+                owner="%system.teamcity.buildType.id%"
                 network="%build.network.name%"
 
                 if ! docker network inspect "${'$'}network" >/dev/null 2>&1; then
@@ -49,7 +49,7 @@ object MssqlTestcontainers : BuildType({
             dockerPull = true
             dockerRunParameters = """
                 --network %build.network.name%
-                --label tc.owner=%teamcity.buildType.id%
+                --label tc.owner=%system.teamcity.buildType.id%
                 --label tc.agent.name=%teamcity.agent.name%
                 --label tc.build.id=%teamcity.build.id%
                 -v /run/user/1000/podman/podman.sock:/var/run/docker.sock
@@ -59,7 +59,7 @@ object MssqlTestcontainers : BuildType({
                 -e TC_BUILD_NETWORK=%build.network.name%
                 -e TC_BUILD_ID=%teamcity.build.id%
                 -e TC_AGENT_NAME=%teamcity.agent.name%
-                -e TC_RESOURCE_OWNER=%teamcity.buildType.id%
+                -e TC_RESOURCE_OWNER=%system.teamcity.buildType.id%
             """.trimIndent().replace("\n", " ")
         }
     }
