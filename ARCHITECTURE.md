@@ -6,7 +6,7 @@ This document is the canonical description of the workspace topology, TeamCity c
 
 ### Local development
 
-When `TEAMCITY_VERSION` is absent or blank, the test process runs directly on the developer machine. Testcontainers publishes SQL Server port `1433` to a random host port, and the fixture constructs its connection string from that mapping. Local mode does not read `HOSTNAME`.
+When `TEAMCITY_VERSION` is absent or blank, the test process runs directly on the developer machine. Testcontainers publishes SQL Server port `1433` to a random host port, and the fixture constructs its connection string from that mapping. Local mode ignores the `SAMPLE_TEAMCITY_*` context variables.
 
 ```mermaid
 flowchart LR
@@ -43,15 +43,20 @@ flowchart LR
     subgraph control[teamcity-control network]
         server[TeamCity server]
         agent[TeamCity agent]
-        git[Git daemon]
         server <--> agent
-        server --> git
     end
+
+    repo[(Host Git checkout<br/>mounted read-only at /repo)]
+    repo --> server
+    repo --> agent
+
+    config[(Host TeamCity project config<br/>mounted read-write)]
+    config <--> server
 
     socket[(Rootless Podman API socket)]
 
     subgraph build[Persistent build network]
-        runner[Ephemeral SDK runner<br/>HOSTNAME = short container ID]
+        runner[Ephemeral SDK runner<br/>explicit SAMPLE_TEAMCITY_* context]
         sql[MSSQL<br/>mssql-GUID:1433<br/>no published port]
         runner -->|container DNS and SQL| sql
     end
@@ -62,20 +67,17 @@ flowchart LR
     agent -->|ensure network and launch| runner
     agent --- socket
     socket -->|mounted as /var/run/docker.sock| runner
-    runner -->|inspect itself using HOSTNAME| socket
-    runner -->|create on discovered network<br/>copy tc labels| sql
+    runner -->|create on configured network<br/>copy tc labels| sql
     runner -->|cleanup session| hostOverride
     hostOverride --> ryuk
     ryuk -.->|removes transient resources| sql
 ```
 
-The `teamcity-control` network is the control boundary for the server, agent, and Git daemon. Test runners do not join it. Each agent/build-configuration pair instead uses a persistent `tc-<agent name>-<build-type id>` build network. That network remains between builds; the SDK runner, SQL Server, and other per-build Testcontainers are transient.
+The `teamcity-control` network is the control boundary for the server and agent. The root VCS definition and `Sample` versioned-settings project definition are committed under `teamcity-compose/server-config` and mounted read-write at their native TeamCity data-directory paths. The host Git checkout is mounted read-only at `/repo` in both long-running containers and is not a network service. Test runners do not join the control network. Each agent/build-configuration pair instead uses a persistent `tc-<agent name>-<build-type id>` build network. That network remains between builds; the SDK runner, SQL Server, and other per-build Testcontainers are transient.
 
 ## Runner discovery and label propagation
 
-`TEAMCITY_VERSION` is the mode switch. TeamCity supplies it automatically inside the SDK runner. When it is set, the fixture requires CI discovery to succeed and never falls back to a host-published SQL port.
-
-The runner's `HOSTNAME` must retain the Docker/Podman default short container ID. The fixture uses that value to inspect the runner through the mounted Podman-compatible API socket. TeamCity must not add `--hostname` to the SDK runner parameters.
+`TEAMCITY_VERSION` is the mode switch. TeamCity supplies it automatically inside the SDK runner. When it is set, the fixture requires all explicit `SAMPLE_TEAMCITY_*` context variables and never falls back to a host-published SQL port.
 
 The TeamCity build first idempotently creates its persistent network with these labels:
 
@@ -84,7 +86,7 @@ The TeamCity build first idempotently creates its persistent network with these 
 | `tc.owner` | TeamCity build-type ID |
 | `tc.agent.name` | TeamCity agent name |
 
-TeamCity then starts the SDK runner on that network with `tc.owner`, `tc.agent.name`, and `tc.build.id`. The fixture requires all three nonblank runner labels and exactly one attached network whose `tc.owner` and `tc.agent.name` match the runner. It copies all three runner labels to the SQL Server container. Missing labels, a blank or uninspectable `HOSTNAME`, no matching network, or multiple matching networks fail fixture initialization before SQL Server starts.
+TeamCity then starts the SDK runner on that network with `tc.owner`, `tc.agent.name`, and `tc.build.id`. The runner receives the same values plus the network name through `SAMPLE_TEAMCITY_NETWORK`, `SAMPLE_TEAMCITY_OWNER`, `SAMPLE_TEAMCITY_AGENT_NAME`, and `SAMPLE_TEAMCITY_BUILD_ID`. The fixture uses this explicit context to attach SQL Server to the build network and copy all three ownership labels. Any missing or blank context variable fails fixture initialization before SQL Server starts.
 
 Unique GUID-based SQL Server names prevent collisions between concurrent test hosts. The labels retain build ownership and correlation without making container identity depend on mutable TeamCity metadata.
 

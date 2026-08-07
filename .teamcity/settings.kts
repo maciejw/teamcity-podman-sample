@@ -54,6 +54,10 @@ object MssqlTestcontainers : BuildType({
                 -v /run/user/1000/podman/podman.sock:/var/run/docker.sock
                 -e DOCKER_HOST=unix:///var/run/docker.sock
                 -e TESTCONTAINERS_HOST_OVERRIDE=host.containers.internal
+                -e SAMPLE_TEAMCITY_NETWORK=%build.network.name%
+                -e SAMPLE_TEAMCITY_OWNER=%system.teamcity.buildType.id%
+                -e SAMPLE_TEAMCITY_AGENT_NAME=%teamcity.agent.name%
+                -e SAMPLE_TEAMCITY_BUILD_ID=%teamcity.build.id%
             """.trimIndent().replace("\n", " ")
         }
     }

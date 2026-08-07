@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Docker.DotNet.Enhanced" Version="4.3.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageReference Include="Testcontainers" Version="4.13.0" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />

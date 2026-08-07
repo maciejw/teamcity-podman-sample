@@ -17,7 +17,7 @@ public sealed class SqlServerFixture : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-        var teamCity = await TeamCityContextDiscovery.DiscoverAsync(timeout.Token);
+        var teamCity = TeamCityContextDiscovery.Discover();
         var containerName = $"mssql-{Guid.NewGuid():N}";
         var password = $"Tc!{Guid.NewGuid():N}aA1";
 
