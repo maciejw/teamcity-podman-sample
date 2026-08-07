@@ -36,7 +36,7 @@ TeamCity images default to the `docker.io` registry. To use a registry mirror, s
 
 ## Git and TeamCity configuration
 
-Compose mounts the host checkout read-only at `/repo` in both TeamCity containers. It also mounts two checked-in TeamCity configuration directories read-write:
+Compose mounts the host checkout read-only at `/repo` in both TeamCity containers. It mounts `server-config` read-write as the TeamCity data directory's complete `config` directory. This avoids first-start ownership problems with nested bind-mount targets and exposes these checked-in definitions to TeamCity:
 
 - The root-project VCS root `CurrentRepository`, pointing to `file:///repo/.git`.
 - The `Sample` project, with one-way Kotlin versioned settings enabled from `CurrentRepository`.
@@ -49,9 +49,9 @@ These settings are equivalent to creating the following configuration in the UI:
 | Default branch | `refs/heads/main` |
 | Authentication | Anonymous |
 
-The checked-in `server-config/internal.properties` enables local file VCS URLs, which TeamCity 2026.1 disables by default for security. Compose mounts this file read-write at `/data/teamcity_server/datadir/config/internal.properties`, so no initial Diagnostics-page edit is required and later internal-property changes made in TeamCity persist to the host file.
+The checked-in `server-config/internal.properties` enables local file VCS URLs, which TeamCity 2026.1 disables by default for security. Later internal-property changes made in TeamCity persist to this host file.
 
-TeamCity reads and updates the host-backed project directories directly. Only `CurrentRepository.xml` and `Sample/project-config.xml` are tracked; scoped `.gitignore` files exclude Kotlin-derived build types, configuration backups, counters, plugin data, and other runtime files. The Kotlin DSL under `.teamcity` remains the source of truth for generated build configurations.
+TeamCity reads and updates the host-backed configuration directly. Only `internal.properties`, `CurrentRepository.xml`, and `Sample/project-config.xml` are tracked. Scoped `.gitignore` files exclude database, authentication, encryption, Kotlin-derived build types, configuration backups, counters, plugin data, and other runtime files. The Kotlin DSL under `.teamcity` remains the source of truth for generated build configurations. Never force-add ignored files from `server-config`: they can contain credentials and other installation-specific secrets.
 
 Only use this local-file arrangement for a trusted demonstration repository. Anyone who can modify the mounted repository can modify the versioned TeamCity settings that the server imports.
 
@@ -59,7 +59,7 @@ Only use this local-file arrangement for a trusted demonstration repository. Any
 
 | Service | Ports and mounts | Notes |
 | --- | --- | --- |
-| `server` | `127.0.0.1:8111:8111`; `server-data`; `server-logs`; `../:/repo:ro`; host-backed `server-config` mounts | Provides the TeamCity UI, persistent state, local repository access, local-file URL opt-in, and writable project bootstrap configuration. |
+| `server` | `127.0.0.1:8111:8111`; `server-data`; `server-logs`; `../:/repo:ro`; `./server-config:/data/teamcity_server/datadir/config` | Provides the TeamCity UI, persistent state, local repository access, and writable host-backed server/project configuration. |
 | `agent` | `agent-config`; `../:/repo:ro`; Podman socket; `/opt/buildagent/{work,temp,logs,tools,plugins,system}` | Connects to `http://server:8111`, checks out the local repository, and launches nested build containers through Podman. |
 
 The repository mount is relative to `compose.yaml`, so this sample does not depend on `C:\setup`. The identical `/repo` path on the server and agent supports both server-side VCS operations and agent-side checkout. The stack's named volumes preserve TeamCity server data, logs, and agent configuration across container replacement. The host-backed agent directories preserve wrapper-visible paths and must not be remapped to different paths inside the agent. The Compose stack itself creates only `teamcity-control`; versioned TeamCity settings create and retain build-specific networks during builds.

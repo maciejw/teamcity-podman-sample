@@ -11,9 +11,7 @@ services:
       - server-data:/data/teamcity_server/datadir
       - server-logs:/opt/teamcity/logs
       - ../:/repo:ro
-      - ./server-config/internal.properties:/data/teamcity_server/datadir/config/internal.properties
-      - ./server-config/projects/_Root/vcsRoots:/data/teamcity_server/datadir/config/projects/_Root/vcsRoots
-      - ./server-config/projects/Sample:/data/teamcity_server/datadir/config/projects/Sample
+      - ./server-config:/data/teamcity_server/datadir/config
     networks:
       - control
 

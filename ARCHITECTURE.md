@@ -50,7 +50,7 @@ flowchart LR
     repo --> server
     repo --> agent
 
-    config[(Host TeamCity project config<br/>mounted read-write)]
+    config[(Host TeamCity config directory<br/>mounted read-write)]
     config <--> server
 
     socket[(Rootless Podman API socket)]
@@ -73,7 +73,7 @@ flowchart LR
     ryuk -.->|removes transient resources| sql
 ```
 
-The `teamcity-control` network is the control boundary for the server and agent. The root VCS definition and `Sample` versioned-settings project definition are committed under `teamcity-compose/server-config` and mounted read-write at their native TeamCity data-directory paths. The host Git checkout is mounted read-only at `/repo` in both long-running containers and is not a network service. Test runners do not join the control network. Each agent/build-configuration pair instead uses a persistent `tc-<agent name>-<build-type id>` build network. That network remains between builds; the SDK runner, SQL Server, and other per-build Testcontainers are transient.
+The `teamcity-control` network is the control boundary for the server and agent. `teamcity-compose/server-config` is mounted read-write as the complete TeamCity data-directory `config` path; the root VCS definition and `Sample` versioned-settings project definition are committed, while installation-specific runtime and secret files are ignored. Mounting the complete directory ensures TeamCity owns a writable configuration root on first startup instead of relying on Podman to create nested bind-mount parents. The host Git checkout is mounted read-only at `/repo` in both long-running containers and is not a network service. Test runners do not join the control network. Each agent/build-configuration pair instead uses a persistent `tc-<agent name>-<build-type id>` build network. That network remains between builds; the SDK runner, SQL Server, and other per-build Testcontainers are transient.
 
 ## Runner discovery and label propagation
 
