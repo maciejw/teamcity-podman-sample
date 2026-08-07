@@ -7,6 +7,5 @@ TestResults/
 *.user
 *.suo
 
-# Workspace-local Codex and Git-daemon state
+# Workspace-local Codex state
 .agents/
-git/

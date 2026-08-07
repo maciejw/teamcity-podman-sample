@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Sample.Data.IntegrationTests;
 
-[Collection(SqlServerCollection.Name)]
+[Collection(IntegrationCollection.Name)]
 public sealed class WidgetRepositoryTests(SqlServerFixture sqlServer)
 {
     [Fact]
@@ -12,11 +12,11 @@ public sealed class WidgetRepositoryTests(SqlServerFixture sqlServer)
         var cancellationToken = TestContext.Current.CancellationToken;
         var repository = new WidgetRepository(sqlServer.ConnectionString);
         await repository.InitializeAsync(cancellationToken);
-        var id = await repository.AddAsync("TeamCity Testcontainers", cancellationToken);
+        var id = await repository.AddAsync("Testcontainers sample", cancellationToken);
 
         var widget = await repository.FindAsync(id, cancellationToken);
 
         Assert.NotNull(widget);
-        Assert.Equal("TeamCity Testcontainers", widget.Name);
+        Assert.Equal("Testcontainers sample", widget.Name);
     }
 }

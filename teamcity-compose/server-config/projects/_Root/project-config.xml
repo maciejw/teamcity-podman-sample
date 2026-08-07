@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" uuid="c81bbd92-8d7a-4f92-aa7a-d31760fc88c5" xsi:noNamespaceSchemaLocation="https://www.jetbrains.com/teamcity/schemas/2025.3/project-config.xsd">
+  <name>&lt;Root project&gt;</name>
+  <parameters>
+    <param name="teamcity.default.container.engine" value="podman" />
+  </parameters>
+</project>

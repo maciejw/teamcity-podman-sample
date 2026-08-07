@@ -1,0 +1,4 @@
+services:
+  network-anchor:
+    image: docker.io/library/busybox:1.37.0-musl
+    command: ["sleep", "infinity"]

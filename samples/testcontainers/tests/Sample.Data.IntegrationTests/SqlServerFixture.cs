@@ -37,10 +37,6 @@ public sealed class SqlServerFixture : IAsyncLifetime
         {
             builder = builder.WithNetwork(teamCity.NetworkName);
 
-            foreach (var label in teamCity.Labels)
-            {
-                builder = builder.WithLabel(label.Key, label.Value);
-            }
         }
 
         _sqlServer = builder.Build();
@@ -78,10 +74,4 @@ public sealed class SqlServerFixture : IAsyncLifetime
             await _sqlServer.DisposeAsync();
         }
     }
-}
-
-[CollectionDefinition(Name)]
-public sealed class SqlServerCollection : ICollectionFixture<SqlServerFixture>
-{
-    public const string Name = "SQL Server";
 }
