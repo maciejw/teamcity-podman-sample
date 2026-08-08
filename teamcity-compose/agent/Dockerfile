@@ -29,7 +29,6 @@ RUN apt-get update \
         --output /tmp/docker-compose \
     && echo "${COMPOSE_SHA256}  /tmp/docker-compose" | sha256sum --check --strict \
     && install --mode 0755 /tmp/docker-compose /usr/local/bin/docker-compose \
-    && git config --system --add safe.directory /repo/.git \
     && rm --recursive --force /tmp/podman-remote.tar.gz /tmp/bin /tmp/docker-compose \
     && rm --recursive --force /var/lib/apt/lists/*
 

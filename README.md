@@ -11,11 +11,11 @@ Each sample owns its solution, SDK and NuGet configuration, source, tests, infra
 
 ## TeamCity demo
 
-[`teamcity-compose`](teamcity-compose/README.md) runs a TeamCity server and one custom Linux agent. The root-owned `CurrentRepository` VCS root feeds two peer, manual projects:
+[`teamcity-compose`](teamcity-compose/README.md) runs a TeamCity server and one custom Linux agent. It registers two peer, manual projects, each with its own project-owned VCS root:
 
 - `Sample Testcontainers`, whose settings path is `samples/testcontainers/.teamcity`
 - `Sample Compose`, whose settings path is `samples/compose/.teamcity`
 
-Neither build has a trigger. The Testcontainers peer retains external project ID `Sample`, so its relative DSL ID preserves the existing absolute build-type ID `Sample_MssqlTestcontainers` and its build history.
+Neither build has a trigger. Project IDs are derived from display names, making the Testcontainers project ID `SampleTestcontainers` and its VCS root `SampleTestcontainers_Repository`. This intentional identity migration requires a clean local TeamCity data reset when testing.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for networking, cleanup, and security details.
