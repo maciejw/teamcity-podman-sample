@@ -6,6 +6,3 @@ Dockerfile text eol=lf
 
 # Local developer launchers are native PowerShell scripts.
 *.ps1 text eol=crlf
-
-# TeamCity's project serializer writes one blank line after the root element.
-/teamcity-compose/server-config/projects/*/project-config.xml whitespace=-blank-at-eof

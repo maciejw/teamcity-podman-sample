@@ -30,13 +30,13 @@ $env:PODMAN_COMPOSE_PROVIDER = (Get-Command docker-compose).Source
 podman compose -f C:\setup\teamcity-compose\compose.yaml up -d --build --remove-orphans
 ```
 
-Open `http://localhost:8111`, finish the TeamCity database/license/administrator setup, and authorize the agent. On a fresh database, make the required one-time decision to import both projects from VCS:
+Open `http://localhost:8111`, finish the TeamCity database/license/administrator setup, and authorize the agent. Then reconcile the local TeamCity instance with the repository's desired-state manifest:
 
 ```powershell
-./teamcity-compose/Import-VersionedSettings.ps1
+./teamcity-compose/Sync-TeamCity.ps1
 ```
 
-The script reads the current local super-user token from the TeamCity container logs without printing it; alternatively, pass an access token with `-Token`. It briefly disables each versioned-settings integration to clear any automatic retry, then enables it with TeamCity's supported `importFromVCS` decision. TeamCity subsequently synchronizes the peer manual projects `Sample Testcontainers` and `Sample Compose` normally. Re-run the Compose start command after image or configuration updates.
+The script reads the current local super-user token from the TeamCity container logs without printing it; alternatively, pass a permanent access token with `-AccessToken` (`-Token` remains an alias). It idempotently creates or updates the Root parameter, root-owned VCS root, peer projects, and their versioned-settings integrations. It imports Kotlin settings only when a project is new or its settings source changes, and never deletes undeclared TeamCity resources. Re-run it after changing `teamcity-state.json`; a second run against matching state is a no-op.
 
 TeamCity probes its Compose provider as `podman-compose` when Podman is selected. The image supplies that command as a thin compatibility launcher for the same checksum-verified `docker-compose` 5.3.1 binary. This advertises `podman.version`, `podmanCompose.version`, and the `DockerCompose` runner without installing Docker. Both `CONTAINER_HOST` and `DOCKER_HOST` target the mounted rootless socket, and the inherited Root-project parameter `teamcity.default.container.engine=podman` makes the wrapper choice explicit for both samples.
 
@@ -44,7 +44,7 @@ TeamCity images default to the `docker.io` registry. To use a registry mirror, s
 
 ## Git and TeamCity configuration
 
-Compose mounts the host checkout read-only at `/repo` in both TeamCity containers. It mounts `server-config` read-write as the TeamCity data directory's complete `config` directory. This avoids first-start ownership problems with nested bind-mount targets and exposes these checked-in definitions to TeamCity:
+Compose mounts the host checkout read-only at `/repo` in both TeamCity containers. It mounts `server-config` read-write as the TeamCity data directory's complete `config` directory. Before the server starts, a one-shot initializer copies the minimal Root descriptor from `server-bootstrap` only when the live descriptor is missing. This satisfies TeamCity's fresh-start requirement without tracking the generated file it subsequently rewrites. The checked-in `teamcity-state.json` is the registration source of truth for:
 
 - The root-project VCS root `CurrentRepository`, pointing to `file:///repo/.git`.
 - The peer `Sample Testcontainers` and `Sample Compose` projects, each using `CurrentRepository` and a custom settings path under its own sample.
@@ -59,7 +59,9 @@ These settings are equivalent to creating the following configuration in the UI:
 
 The checked-in `server-config/internal.properties` enables local file VCS URLs, which TeamCity 2026.1 disables by default for security. Later internal-property changes made in TeamCity persist to this host file.
 
-TeamCity reads and updates the host-backed configuration directly. Only `internal.properties`, the Root project descriptor, `CurrentRepository.xml`, and the two peer `project-config.xml` files are tracked. Scoped `.gitignore` files exclude database, authentication, encryption, Kotlin-derived build types, configuration backups, counters, plugin data, and other runtime files. The Kotlin DSL under each sample's `.teamcity` directory remains the source of truth for generated build configurations. Never force-add ignored files from `server-config`: they can contain credentials and other installation-specific secrets.
+TeamCity writes its generated project XML and other installation state into the host-backed configuration directory. All of it is ignored except `internal.properties`; the immutable Root bootstrap seed lives outside that directory. The Kotlin DSL under each sample's `.teamcity` directory remains the source of truth for generated build configurations. Never force-add ignored files from `server-config`: they can contain credentials and other installation-specific secrets.
+
+This demonstrates a scalable ownership boundary: a platform manifest registers project identity, hierarchy, VCS roots, and settings locations, while each registered project's `.teamcity` directory owns its builds. In a production installation, run the reconciler with a scoped service account token obtained from secret storage instead of relying on local super-user token discovery.
 
 Only use this local-file arrangement for a trusted demonstration repository. Anyone who can modify the mounted repository can modify the versioned TeamCity settings that the server imports.
 
@@ -67,6 +69,7 @@ Only use this local-file arrangement for a trusted demonstration repository. Any
 
 | Service | Ports and mounts | Notes |
 | --- | --- | --- |
+| `server-config-init` | `./server-bootstrap:/bootstrap:ro`; `./server-config:/config` | Seeds the mandatory Root descriptor when the writable configuration is new. |
 | `server` | `127.0.0.1:8111:8111`; `server-data`; `server-logs`; `../:/repo:ro`; `./server-config:/data/teamcity_server/datadir/config` | Provides the TeamCity UI, persistent state, local repository access, and writable host-backed server/project configuration. |
 | `agent` | `agent-config`; `../:/repo:ro`; Podman socket; `/opt/buildagent/{work,temp,logs,tools,plugins,system}` | Runs as UID 1000, connects to TeamCity, and launches nested build containers through the Podman remote client. |
 

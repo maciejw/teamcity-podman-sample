@@ -1,10 +1,27 @@
 name: teamcity
 
 services:
+  server-config-init:
+    image: ${CONTAINER_REGISTRY:-docker.io}/jetbrains/teamcity-server:2026.1.3-linux
+    network_mode: none
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -f /config/projects/_Root/project-config.xml ]; then
+          mkdir -p /config/projects/_Root
+          cp /bootstrap/root-project-config.xml /config/projects/_Root/project-config.xml
+        fi
+    volumes:
+      - ./server-bootstrap:/bootstrap:ro
+      - ./server-config:/config
+
   server:
     image: ${CONTAINER_REGISTRY:-docker.io}/jetbrains/teamcity-server:2026.1.3-linux
     container_name: teamcity-server
     restart: unless-stopped
+    depends_on:
+      server-config-init:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8111:8111"
     volumes:
