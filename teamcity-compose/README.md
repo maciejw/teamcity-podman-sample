@@ -41,8 +41,11 @@ Compose mounts the host checkout read-only at `/repo` in the TeamCity server onl
 
 - `Sample Testcontainers`, with its project-owned `SampleTestcontainers_Repository` VCS root and `samples/testcontainers/.teamcity` settings path.
 - `Sample Compose`, with its project-owned `SampleCompose_Repository` VCS root and `samples/compose/.teamcity` settings path.
+- `Sample Aspire`, with its project-owned `SampleAspire_Repository` VCS root and `samples/aspire/.teamcity` settings path.
 
 Both VCS roots point to `file:///repo/.git`; duplicating that endpoint keeps each project registration self-contained.
+
+The Aspire build is intentionally different from the other two: TeamCity runs only the SDK `dotnetTest` container. The test process launches the AppHost through `Aspire.Hosting.Testing`; Aspire/DCP creates and cleans up SQL Server and Kafka through the mounted rootless Podman socket. It uses dynamic resource endpoints and needs no `TEAMCITY_DOCKER_NETWORK` or Compose network anchor.
 
 These settings are equivalent to creating the following configuration in the UI:
 

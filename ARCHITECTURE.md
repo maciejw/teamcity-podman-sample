@@ -2,7 +2,11 @@
 
 ## Independent samples
 
-`samples/compose` and `samples/testcontainers` are deliberately self-contained. They duplicate the small production component and the three SQL, Kafka, and combined tests so that each sample explains one lifecycle model without shared code or runtime configuration.
+`samples/compose`, `samples/testcontainers`, and `samples/aspire` are deliberately self-contained. They duplicate the small production component and the three SQL, Kafka, and combined tests so that each sample explains one lifecycle model without shared code or runtime configuration.
+
+## Aspire lifecycle
+
+The Aspire sample's test process launches the AppHost with `Aspire.Hosting.Testing`. The AppHost/DCP creates SQL Server and Kafka through the configured container runtime, waits for resource health, and removes both resources when the test fixture is disposed—even when tests fail. Tests read dynamically allocated SQL and Kafka connection details from Aspire, and port randomization remains enabled for parallel runs.
 
 ## Compose lifecycle
 
@@ -16,7 +20,7 @@ Locally, the Testcontainers fixtures create uniquely named SQL Server and Kafka 
 
 ## TeamCity configuration
 
-The TeamCity server bootstrap contains two peer projects defined by an ordered map. Each project owns a VCS root pointing to the repository mounted in the server and a versioned-settings configuration pointing to its sample-specific `.teamcity` directory. TeamCity checks out sources and keeps agent build state under `/opt/buildagent` on the agent. Both build configurations are manual and require Linux, Podman, and Compose. Project IDs are derived by removing non-alphanumeric characters; the Testcontainers project therefore uses `SampleTestcontainers` and its VCS root uses `SampleTestcontainers_Repository`. This intentional identity migration does not preserve the old project history.
+The TeamCity server bootstrap contains three peer projects defined by an ordered map. Each project owns a VCS root pointing to the repository mounted in the server and a versioned-settings configuration pointing to its sample-specific `.teamcity` directory. TeamCity checks out sources and keeps agent build state under `/opt/buildagent` on the agent. All builds are manual and require Linux, Podman, and Compose capability; Aspire itself uses only a `dotnetTest` step and no Compose runner or network anchor. The Aspire project ID is `SampleAspire` and its VCS root is `SampleAspire_Repository`.
 
 The bootstrap materializes shared REST request templates in memory and performs exactly three writes per map entry: project creation, VCS-root creation, and versioned-settings configuration with `importDecision=importFromVCS`. It is intentionally create-only and does not provide no-op convergence; reset local TeamCity data before rerunning it. Each project's Kotlin DSL remains the source of truth for its build configurations. The Root project seed retains `teamcity.default.container.engine=podman`.
 

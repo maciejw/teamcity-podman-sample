@@ -36,6 +36,10 @@ $projects = [ordered]@{
         settingsPath = "samples/compose/.teamcity"
         vcs = @{ url = "file:///repo/.git" }
     }
+    "Sample Aspire" = @{
+        settingsPath = "samples/aspire/.teamcity"
+        vcs = @{ url = "file:///repo/.git" }
+    }
 }
 
 $session = New-TeamCitySession $ServerUrl $AccessToken

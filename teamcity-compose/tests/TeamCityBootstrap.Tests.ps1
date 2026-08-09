@@ -18,7 +18,7 @@ Describe "TeamCity bootstrap definitions" {
         $init | Should-MatchString 'chown -R 1000:1000'
     }
 
-    It "starts the stack, waits for TeamCity, and keeps both map entries" {
+    It "starts the stack, waits for TeamCity, and keeps all map entries" {
         $bootstrap = Get-Content (Join-Path $PSScriptRoot "..\Bootstrap-TeamCity.ps1") -Raw
         $bootstrap | Should-MatchString 'podman compose .*up -d --remove-orphans'
         $bootstrap | Should-MatchString 'Wait-TeamCityReady -ServerUrl \$ServerUrl'
@@ -30,8 +30,10 @@ Describe "TeamCity bootstrap definitions" {
         $bootstrap | Should-MatchString '\$projects\.GetEnumerator\(\) \| Register-Project -Session \$session'
         $bootstrap | Should-MatchString '"Sample Testcontainers"'
         $bootstrap | Should-MatchString '"Sample Compose"'
+        $bootstrap | Should-MatchString '"Sample Aspire"'
         $bootstrap | Should-MatchString 'samples/testcontainers/\.teamcity'
         $bootstrap | Should-MatchString 'samples/compose/\.teamcity'
+        $bootstrap | Should-MatchString 'samples/aspire/\.teamcity'
         $bootstrap | Should-NotMatchString 'Ensure-Project|Sync-TeamCity'
     }
 
@@ -69,6 +71,7 @@ InModuleScope TeamCityBootstrap {
             $projects = [ordered]@{
                 "Sample Testcontainers" = @{ settingsPath = "samples/testcontainers/.teamcity"; vcs = @{ url = "file:///repo/.git" } }
                 "Sample Compose" = @{ settingsPath = "samples/compose/.teamcity"; vcs = @{ url = "file:///repo/.git" } }
+                "Sample Aspire" = @{ settingsPath = "samples/aspire/.teamcity"; vcs = @{ url = "file:///repo/.git" } }
             }
             $global:requestSequence = @()
             Mock Invoke-TeamCityWrite { $global:requestSequence += "$($Method.ToUpperInvariant()) $Path" }
@@ -77,11 +80,11 @@ InModuleScope TeamCityBootstrap {
         It "makes exactly three writes per project in documented order" {
             $projects.GetEnumerator() | Register-Project -Session $session
 
-            Should-Invoke Invoke-TeamCityWrite -Times 6 -Exactly
-            Should-Invoke Invoke-TeamCityWrite -Times 2 -Exactly -ParameterFilter { $Method -eq "Post" -and $Path -eq "/app/rest/projects" }
-            Should-Invoke Invoke-TeamCityWrite -Times 2 -Exactly -ParameterFilter { $Method -eq "Post" -and $Path -eq "/app/rest/vcs-roots" }
-            Should-Invoke Invoke-TeamCityWrite -Times 2 -Exactly -ParameterFilter { $Method -eq "Put" -and $Path -like "/app/rest/projects/id:*/versionedSettings/config" }
-            ($global:requestSequence -join "`n") | Should-Be ("POST /app/rest/projects`nPOST /app/rest/vcs-roots`nPUT /app/rest/projects/id:SampleTestcontainers/versionedSettings/config`nPOST /app/rest/projects`nPOST /app/rest/vcs-roots`nPUT /app/rest/projects/id:SampleCompose/versionedSettings/config")
+            Should-Invoke Invoke-TeamCityWrite -Times 9 -Exactly
+            Should-Invoke Invoke-TeamCityWrite -Times 3 -Exactly -ParameterFilter { $Method -eq "Post" -and $Path -eq "/app/rest/projects" }
+            Should-Invoke Invoke-TeamCityWrite -Times 3 -Exactly -ParameterFilter { $Method -eq "Post" -and $Path -eq "/app/rest/vcs-roots" }
+            Should-Invoke Invoke-TeamCityWrite -Times 3 -Exactly -ParameterFilter { $Method -eq "Put" -and $Path -like "/app/rest/projects/id:*/versionedSettings/config" }
+            ($global:requestSequence -join "`n") | Should-Be ("POST /app/rest/projects`nPOST /app/rest/vcs-roots`nPUT /app/rest/projects/id:SampleTestcontainers/versionedSettings/config`nPOST /app/rest/projects`nPOST /app/rest/vcs-roots`nPUT /app/rest/projects/id:SampleCompose/versionedSettings/config`nPOST /app/rest/projects`nPOST /app/rest/vcs-roots`nPUT /app/rest/projects/id:SampleAspire/versionedSettings/config")
 
             Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/projects" -and $Payload.id -eq "SampleTestcontainers" }
             Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/vcs-roots" -and $Payload.id -eq "SampleTestcontainers_Repository" }
@@ -89,6 +92,9 @@ InModuleScope TeamCityBootstrap {
             Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/projects" -and $Payload.id -eq "SampleCompose" }
             Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/vcs-roots" -and $Payload.id -eq "SampleCompose_Repository" }
             Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/projects/id:SampleCompose/versionedSettings/config" -and $Payload.vcsRootId -eq "SampleCompose_Repository" }
+            Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/projects" -and $Payload.id -eq "SampleAspire" }
+            Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/vcs-roots" -and $Payload.id -eq "SampleAspire_Repository" }
+            Should-Invoke Invoke-TeamCityWrite -Times 1 -Exactly -Scope It -ParameterFilter { $Path -eq "/app/rest/projects/id:SampleAspire/versionedSettings/config" -and $Payload.vcsRootId -eq "SampleAspire_Repository" }
         }
 
         It "sends the project, VCS, and versioned-settings fields" {
