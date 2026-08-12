@@ -60,6 +60,8 @@ Describe "TeamCity bootstrap definitions" {
         @([regex]::Matches($agent, '(?m)^\s*- ../:/repo:ro\s*$')).Count | Should-Be 1
         $agent | Should-NotMatchString '(?m)^\s*container_name:'
         $agent | Should-MatchString '(?m)^\s*TEAMCITY_AGENT_ROOT: \$\{TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents\}\s*$'
+        $agent | Should-MatchString '(?m)^\s*userns_mode: keep-id\s*$'
+        $agent | Should-NotMatchString '(?m)^\s*group_add:'
         $agent | Should-MatchString '(?m)^\s*- \$\{TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents\}:\$\{TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents\}\s*$'
         $agent | Should-NotMatchString '(?m)^\s*- /opt/teamcity-agent/[^:]+:/opt/buildagent/'
         $agent | Should-NotMatchString 'agent-config:/data/teamcity_agent/conf'

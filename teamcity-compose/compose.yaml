@@ -47,8 +47,6 @@ services:
       TEAMCITY_AGENT_ROOT: ${TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents}
       CONTAINER_HOST: unix:///run/user/1000/podman/podman.sock
       DOCKER_HOST: unix:///run/user/1000/podman/podman.sock
-    group_add:
-      - "0"
     volumes:
       - /run/user/1000/podman/podman.sock:/run/user/1000/podman/podman.sock
       - ../:/repo:ro

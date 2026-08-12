@@ -9,7 +9,7 @@ This Compose deployment runs one TeamCity server and one custom Linux build agen
 - The rootless API socket at `/run/user/1000/podman/podman.sock`.
 - This repository checked out on the Windows host. Compose mounts the directory above `teamcity-compose` read-only as `/repo` in both the TeamCity server and agent so the local-file VCS root is available during settings import and agent-side checkout.
 
-The agent runs as non-root UID 1000. Supplemental container group 0 gives it group access to the mounted rootless socket, which appears as `root:root`. Access to that socket is privileged within the rootless Podman user's container and filesystem domain, so only trusted builds should use this agent.
+The agent runs as non-root UID/GID 1000 with `userns_mode: keep-id`. The rootless API socket is owned by the same host UID/GID, so no supplemental container group is required. Access to that socket is privileged within the rootless Podman user's container and filesystem domain, so only trusted builds should use this agent.
 
 ## Agent directories
 
