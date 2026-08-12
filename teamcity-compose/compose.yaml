@@ -36,6 +36,7 @@ services:
         CONTAINER_REGISTRY: ${CONTAINER_REGISTRY:-docker.io}
         GITHUB_HOST: ${GITHUB_HOST:-github.com}
         APT_REPOSITORY: ${APT_REPOSITORY:-}
+        APT_SECURITY_REPOSITORY: ${APT_SECURITY_REPOSITORY:-}
     container_name: teamcity-agent
     user: "1000:1000"
     userns_mode: keep-id

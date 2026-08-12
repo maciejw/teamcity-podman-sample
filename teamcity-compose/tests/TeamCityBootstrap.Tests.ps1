@@ -52,6 +52,7 @@ Describe "TeamCity bootstrap definitions" {
             $agent | Should-MatchString "(?m)^\s*- /opt/teamcity-agent/$($path):/opt/buildagent/$path\s*$"
         }
         $agent | Should-MatchString '(?m)APT_REPOSITORY: \$\{APT_REPOSITORY:-\}'
+        $agent | Should-MatchString '(?m)APT_SECURITY_REPOSITORY: \$\{APT_SECURITY_REPOSITORY:-\}'
 
         $bootstrap = Get-Content (Join-Path $PSScriptRoot "..\Bootstrap-TeamCity.ps1") -Raw
         $bootstrap | Should-MatchString 'podman machine ssh'
@@ -60,7 +61,15 @@ Describe "TeamCity bootstrap definitions" {
         $dockerfile = Get-Content (Join-Path $PSScriptRoot "..\agent\Dockerfile") -Raw
         $dockerfile | Should-NotMatchString 'git config --system --add safe\.directory /repo/\.git'
         $dockerfile | Should-MatchString 'ARG APT_REPOSITORY'
-        $dockerfile | Should-MatchString 'archive'
+        $dockerfile | Should-MatchString 'ARG APT_SECURITY_REPOSITORY'
+        $dockerfile | Should-MatchString 'ubuntu\.sources'
+        $dockerfile | Should-MatchString 'VERSION_CODENAME'
+        $dockerfile | Should-MatchString 'Components: main restricted universe multiverse'
+        $dockerfile | Should-MatchString 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring\.gpg'
+        $dockerfile | Should-MatchString 'RUN <<INSTALL_TOOLS'
+        $dockerfile | Should-MatchString '(?ms)RUN <<INSTALL_TOOLS\s+set -eu\s+.*?INSTALL_TOOLS'
+        $dockerfile | Should-NotMatchString 'sed -i'
+        $dockerfile | Should-NotMatchString '(?m)^if '
     }
 }
 
