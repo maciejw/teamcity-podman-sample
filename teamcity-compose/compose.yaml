@@ -35,8 +35,10 @@ services:
       args:
         CONTAINER_REGISTRY: ${CONTAINER_REGISTRY:-docker.io}
         GITHUB_HOST: ${GITHUB_HOST:-github.com}
+        APT_REPOSITORY: ${APT_REPOSITORY:-}
     container_name: teamcity-agent
     user: "1000:1000"
+    userns_mode: keep-id
     restart: unless-stopped
     depends_on:
       - server
@@ -49,7 +51,12 @@ services:
     volumes:
       - agent-config:/data/teamcity_agent/conf
       - /run/user/1000/podman/podman.sock:/run/user/1000/podman/podman.sock
-      - /opt/teamcity-agent:/opt/buildagent
+      - /opt/teamcity-agent/work:/opt/buildagent/work
+      - /opt/teamcity-agent/temp:/opt/buildagent/temp
+      - /opt/teamcity-agent/logs:/opt/buildagent/logs
+      - /opt/teamcity-agent/plugins:/opt/buildagent/plugins
+      - /opt/teamcity-agent/system:/opt/buildagent/system
+      - /opt/teamcity-agent/tools:/opt/buildagent/tools
     networks:
       - control
 

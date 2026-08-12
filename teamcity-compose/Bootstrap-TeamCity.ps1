@@ -7,11 +7,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "Provisioning TeamCity agent directories..."
-& podman machine ssh -- @"
-    sudo mkdir -p /opt/teamcity-agent && \
-    sudo chown -R 1000:1000 /opt/teamcity-agent && \
-    podman unshare chown -R 1000:1000 /opt/teamcity-agent
-"@
+& podman machine ssh -- "sudo mkdir -p /opt/teamcity-agent/work /opt/teamcity-agent/temp /opt/teamcity-agent/logs /opt/teamcity-agent/plugins /opt/teamcity-agent/system /opt/teamcity-agent/tools"
+& podman machine ssh -- "sudo chown -R 1000:1000 /opt/teamcity-agent"
+
 if ($LASTEXITCODE -ne 0) {
     throw "Failed to provision the TeamCity agent directories (exit code $LASTEXITCODE)."
 }

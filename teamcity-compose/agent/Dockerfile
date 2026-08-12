@@ -7,12 +7,22 @@ ARG GITHUB_HOST
 
 USER root
 
+ARG APT_REPOSITORY
 ARG PODMAN_VERSION=6.0.2
 ARG PODMAN_SHA256=73ca9840cfa4d819e2def9274e4e1d16dc8396a230e19f7e362266312f31d4a4
 ARG COMPOSE_VERSION=5.3.1
 ARG COMPOSE_SHA256=f9ebc6ebdb19d769b793c245a736caaeb198c62587f13b25c660c13b4987f959
 
-RUN apt-get update \
+RUN if [ -n "${APT_REPOSITORY}" ]; then \
+        find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) \
+            -exec sed -i -E \
+                -e "s#https?://deb\\.debian\\.org/debian[^[:space:]]*#${APT_REPOSITORY}#g" \
+                -e "s#https?://security\\.debian\\.org/debian-security[^[:space:]]*#${APT_REPOSITORY}#g" \
+                -e "s#https?://archive\\.ubuntu\\.com/ubuntu[^[:space:]]*#${APT_REPOSITORY}#g" \
+                -e "s#https?://security\\.ubuntu\\.com/ubuntu[^[:space:]]*#${APT_REPOSITORY}#g" \
+                {} +; \
+    fi \
+    && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
         ca-certificates \
         curl \

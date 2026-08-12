@@ -13,7 +13,7 @@ The agent runs as non-root UID 1000. Supplemental container group 0 gives it gro
 
 ## Agent directories
 
-`Bootstrap-TeamCity.ps1` provisions and owns the host-side `/opt/teamcity-agent` directory before starting Compose. Compose maps that host directory to TeamCity’s required `/opt/buildagent` path inside the container, allowing TeamCity to create and manage its checkout and build-state subdirectories as needed. The bootstrap also applies the rootless subordinate-ID ownership required for UID 1000; on native Linux, run the equivalent provisioning commands directly as the account that owns the rootless Podman service.
+`Bootstrap-TeamCity.ps1` provisions and owns the host-side `/opt/teamcity-agent` directory before starting Compose. Compose maps its persistent subdirectories individually under `/opt/buildagent`, leaving the agent image's `/opt/buildagent/bin` and `/opt/buildagent/conf` installation files visible. The agent runs with `userns_mode: keep-id`, so ownership by UID 1000 on the Podman machine is sufficient; on native Linux, run the equivalent provisioning commands directly as the account that owns the rootless Podman service.
 
 ## Start or update the stack
 
@@ -28,12 +28,13 @@ The script starts the Compose stack and waits for `/healthCheck/ready` to return
 Run the bootstrap tests with Pester 6 or later:
 
 ```powershell
+Import-Module Pester -MinimumVersion 6.0.0 -Force
 Invoke-Pester -Path ./teamcity-compose/tests
 ```
 
 TeamCity probes its Compose provider as `podman-compose` when Podman is selected. The image supplies that command as a thin compatibility launcher for the same checksum-verified `docker-compose` 5.3.1 binary. This advertises `podman.version`, `podmanCompose.version`, and the `DockerCompose` runner without installing Docker. Both `CONTAINER_HOST` and `DOCKER_HOST` target the mounted rootless socket, and the inherited Root-project parameter `teamcity.default.container.engine=podman` makes the wrapper choice explicit for both samples.
 
-TeamCity images default to the `docker.io` registry. To use a registry mirror, set `CONTAINER_REGISTRY` to its host or prefix without a trailing slash before running Compose, for example `$env:CONTAINER_REGISTRY = "registry.example.com"`. The agent downloads its pinned Podman and Compose binaries from `github.com`; set `GITHUB_HOST` to a compatible GitHub download mirror when direct GitHub access is unavailable.
+TeamCity images default to the `docker.io` registry. To use a registry mirror, set `CONTAINER_REGISTRY` to its host or prefix without a trailing slash before running Compose, for example `$env:CONTAINER_REGISTRY = "registry.example.com"`. The agent downloads its pinned Podman and Compose binaries from `github.com`; set `GITHUB_HOST` to a compatible GitHub download mirror when direct GitHub access is unavailable. To use an Artifactory Debian mirror for the agent build, set `APT_REPOSITORY` in `.env` to its repository URL; when unset, the image keeps the base image's official Debian sources.
 
 ## Git and TeamCity configuration
 
@@ -66,6 +67,6 @@ Only use this local-file arrangement for a trusted demonstration repository. Any
 | --- | --- | --- |
 | `server-data-init` | `server-data`; `./server-bootstrap/init-server-data.sh:/bootstrap/init-server-data.sh:ro` | Creates the config tree and repairs ownership for TeamCity UID 1000. |
 | `server` | `127.0.0.1:8111:8111`; `server-data`; `server-logs`; `../:/repo:ro`; Root descriptor and `internal.properties` file mappings | Provides the TeamCity UI, persistent state, local repository access, and generated server/project configuration. |
-| `agent` | `agent-config`; Podman socket; `/opt/teamcity-agent:/opt/buildagent` | Runs as UID 1000, receives TeamCity checkouts and build state under `/opt/buildagent`, and launches nested build containers through the Podman remote client. |
+| `agent` | `agent-config`; Podman socket; persistent `/opt/teamcity-agent/{work,temp,logs,plugins,system,tools}` subdirectories | Runs as UID 1000, receives TeamCity checkouts and build state under `/opt/buildagent`, and launches nested build containers through the Podman remote client. |
 
-The repository mount is relative to `compose.yaml`, so this sample does not depend on `C:\setup`. The server-owned `/repo` mount supports server-side VCS operations, while `/opt/teamcity-agent` preserves the agent's wrapper-visible checkout and build-state paths through its mapping to `/opt/buildagent`. The stack's named volumes preserve TeamCity server data, logs, and agent configuration across container replacement. The initial rootless ownership mapping remains necessary; Podman detection prevents TeamCity from launching its Docker/busybox ownership-restoration container after every wrapped step.
+The repository mount is relative to `compose.yaml`, so this sample does not depend on `C:\setup`. The server-owned `/repo` mount supports server-side VCS operations, while the persistent `/opt/teamcity-agent` subdirectories preserve the agent's checkout, build-state, logs, tools, plugins, and system paths without masking the image's installation. The stack's named volumes preserve TeamCity server data, logs, and agent configuration across container replacement. Podman detection prevents TeamCity from launching its Docker/busybox ownership-restoration container after every wrapped step.

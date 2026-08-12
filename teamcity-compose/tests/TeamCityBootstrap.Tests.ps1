@@ -1,3 +1,5 @@
+#requires -Modules @{ ModuleName = "Pester"; ModuleVersion = "6.0.0" }
+
 Describe "TeamCity bootstrap definitions" {
     It "keeps the Root Podman parameter" {
         [xml]$root = Get-Content (Join-Path $PSScriptRoot "..\server-bootstrap/root-project-config.xml") -Raw
@@ -45,16 +47,20 @@ Describe "TeamCity bootstrap definitions" {
         $compose | Should-MatchString '(?ms)server:\s.*?../:/repo:ro'
         $agent = [regex]::Match($compose, '(?ms)^  agent:\s.*?(?=^  [a-zA-Z0-9_-]+:|^volumes:)').Value
         $agent | Should-NotMatchString '(?m)^[ \t-]*[^\r\n]*:/repo(?::|$)'
-        @([regex]::Matches($agent, '(?m)^\s*- /opt/teamcity-agent:/opt/buildagent\s*$')).Count | Should-Be 1
-        $agent | Should-NotMatchString '/opt/buildagent/(work|temp|logs|tools|plugins|system):/opt/buildagent/'
+        $agent | Should-NotMatchString '(?m)^\s*- /opt/teamcity-agent:/opt/buildagent\s*$'
+        foreach ($path in @("work", "temp", "logs", "plugins", "system", "tools")) {
+            $agent | Should-MatchString "(?m)^\s*- /opt/teamcity-agent/$($path):/opt/buildagent/$path\s*$"
+        }
+        $agent | Should-MatchString '(?m)APT_REPOSITORY: \$\{APT_REPOSITORY:-\}'
 
         $bootstrap = Get-Content (Join-Path $PSScriptRoot "..\Bootstrap-TeamCity.ps1") -Raw
         $bootstrap | Should-MatchString 'podman machine ssh'
-        $bootstrap | Should-MatchString 'mkdir -p /opt/teamcity-agent'
-        $bootstrap | Should-NotMatchString 'work,temp,logs,tools,plugins,system'
+        $bootstrap | Should-MatchString 'mkdir -p /opt/teamcity-agent/work /opt/teamcity-agent/temp /opt/teamcity-agent/logs /opt/teamcity-agent/plugins /opt/teamcity-agent/system /opt/teamcity-agent/tools'
 
         $dockerfile = Get-Content (Join-Path $PSScriptRoot "..\agent\Dockerfile") -Raw
         $dockerfile | Should-NotMatchString 'git config --system --add safe\.directory /repo/\.git'
+        $dockerfile | Should-MatchString 'ARG APT_REPOSITORY'
+        $dockerfile | Should-MatchString 'archive'
     }
 }
 
