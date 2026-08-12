@@ -15,6 +15,10 @@ object MssqlTestcontainers : BuildType({
         root(DslContext.settingsRoot)
     }
 
+    params {
+        param("env.COMPOSE_PROJECT_NAME", "teamcity-%teamcity.agent.name%-%system.teamcity.buildType.id%")
+    }
+
     steps {
         dockerCompose {
             id = "start_network_anchor"

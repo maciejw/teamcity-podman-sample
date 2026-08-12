@@ -70,7 +70,8 @@ rm --recursive --force /var/lib/apt/lists/*
 INSTALL_TOOLS
 
 COPY --chown=root:root podman-compose.sh /usr/local/bin/podman-compose
-RUN chmod 0755 /usr/local/bin/podman-compose
+COPY --chown=root:root run-agent.sh /run-agent.sh
+RUN chmod 0755 /usr/local/bin/podman-compose /run-agent.sh
 
 ENV CONTAINER_HOST=unix:///run/user/1000/podman/podman.sock \
     DOCKER_HOST=unix:///run/user/1000/podman/podman.sock

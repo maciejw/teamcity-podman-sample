@@ -22,4 +22,4 @@ The base file has no published ports. The local override publishes SQL Server an
 
 ## TeamCity
 
-The manual TeamCity build starts only the base file through the typed Compose runner. TeamCity waits for service health, attaches the following SDK wrapper to the generated network, and tears down the services and network after the build. No endpoint environment parameters or Testcontainers resources are used.
+The manual TeamCity build starts only the base file through the typed Compose runner. `COMPOSE_PROJECT_NAME` combines the agent name and TeamCity build type ID. Since an agent executes one build at a time, concurrent builds on different agents receive separate Compose resources and networks, while later runs of the same build type on the same agent reuse a deterministic project name. The agent's Compose compatibility launcher normalizes TeamCity's mixed-case build type ID to Compose's lowercase naming rules. TeamCity waits for service health, attaches the following SDK wrapper to that build's generated network, and tears down the services and network after the build. No endpoint environment parameters or Testcontainers resources are used.

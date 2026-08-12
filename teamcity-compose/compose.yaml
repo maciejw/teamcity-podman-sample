@@ -37,7 +37,6 @@ services:
         GITHUB_HOST: ${GITHUB_HOST:-github.com}
         APT_REPOSITORY: ${APT_REPOSITORY:-}
         APT_SECURITY_REPOSITORY: ${APT_SECURITY_REPOSITORY:-}
-    container_name: teamcity-agent
     user: "1000:1000"
     userns_mode: keep-id
     restart: unless-stopped
@@ -45,26 +44,21 @@ services:
       - server
     environment:
       SERVER_URL: http://server:8111
+      TEAMCITY_AGENT_ROOT: ${TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents}
       CONTAINER_HOST: unix:///run/user/1000/podman/podman.sock
       DOCKER_HOST: unix:///run/user/1000/podman/podman.sock
     group_add:
       - "0"
     volumes:
-      - agent-config:/data/teamcity_agent/conf
       - /run/user/1000/podman/podman.sock:/run/user/1000/podman/podman.sock
-      - /opt/teamcity-agent/work:/opt/buildagent/work
-      - /opt/teamcity-agent/temp:/opt/buildagent/temp
-      - /opt/teamcity-agent/logs:/opt/buildagent/logs
-      - /opt/teamcity-agent/plugins:/opt/buildagent/plugins
-      - /opt/teamcity-agent/system:/opt/buildagent/system
-      - /opt/teamcity-agent/tools:/opt/buildagent/tools
+      - ../:/repo:ro
+      - ${TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents}:${TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents}
     networks:
       - control
 
 volumes:
   server-data:
   server-logs:
-  agent-config:
 
 networks:
   control:

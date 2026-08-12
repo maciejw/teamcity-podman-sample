@@ -23,6 +23,7 @@ Describe "TeamCity bootstrap definitions" {
     It "starts the stack, waits for TeamCity, and keeps both map entries" {
         $bootstrap = Get-Content (Join-Path $PSScriptRoot "..\Bootstrap-TeamCity.ps1") -Raw
         $bootstrap | Should-MatchString 'podman compose .*up -d --remove-orphans'
+        $bootstrap | Should-MatchString '--scale "agent=\$AgentCount"'
         $bootstrap | Should-MatchString 'Wait-TeamCityReady -ServerUrl \$ServerUrl'
         $bootstrap | Should-MatchString '\$session = New-TeamCitySession \$ServerUrl \$AccessToken'
         $bootstrap | Should-MatchString 'system administrator token'
@@ -42,21 +43,33 @@ Describe "TeamCity bootstrap definitions" {
             (Join-Path $PSScriptRoot "..\project-request.json") -ErrorAction SilentlyContinue).Count | Should-Be 0
     }
 
-    It "keeps repository access on the server and consolidates agent build paths" {
+    It "gives each TeamCity build an isolated Compose project and network" {
+        foreach ($sample in @("compose", "testcontainers")) {
+            $settings = Get-Content (Join-Path $PSScriptRoot "..\..\samples\$sample\.teamcity\settings.kts") -Raw
+            $settings | Should-MatchString 'param\("env\.COMPOSE_PROJECT_NAME", "teamcity-%teamcity\.agent\.name%-%system\.teamcity\.buildType\.id%"\)'
+        }
+
+        $launcher = Get-Content (Join-Path $PSScriptRoot "..\agent\podman-compose.sh") -Raw
+        $launcher | Should-MatchString 'COMPOSE_PROJECT_NAME=.*tr.*\[:upper:\].*\[:lower:\]'
+    }
+
+    It "keeps repository access and uses a path-identical configurable agent home" {
         $compose = Get-Content (Join-Path $PSScriptRoot "..\compose.yaml") -Raw
         $compose | Should-MatchString '(?ms)server:\s.*?../:/repo:ro'
         $agent = [regex]::Match($compose, '(?ms)^  agent:\s.*?(?=^  [a-zA-Z0-9_-]+:|^volumes:)').Value
-        $agent | Should-NotMatchString '(?m)^[ \t-]*[^\r\n]*:/repo(?::|$)'
-        $agent | Should-NotMatchString '(?m)^\s*- /opt/teamcity-agent:/opt/buildagent\s*$'
-        foreach ($path in @("work", "temp", "logs", "plugins", "system", "tools")) {
-            $agent | Should-MatchString "(?m)^\s*- /opt/teamcity-agent/$($path):/opt/buildagent/$path\s*$"
-        }
+        @([regex]::Matches($agent, '(?m)^\s*- ../:/repo:ro\s*$')).Count | Should-Be 1
+        $agent | Should-NotMatchString '(?m)^\s*container_name:'
+        $agent | Should-MatchString '(?m)^\s*TEAMCITY_AGENT_ROOT: \$\{TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents\}\s*$'
+        $agent | Should-MatchString '(?m)^\s*- \$\{TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents\}:\$\{TEAMCITY_AGENT_ROOT:-/opt/teamcity-agents\}\s*$'
+        $agent | Should-NotMatchString '(?m)^\s*- /opt/teamcity-agent/[^:]+:/opt/buildagent/'
+        $agent | Should-NotMatchString 'agent-config:/data/teamcity_agent/conf'
         $agent | Should-MatchString '(?m)APT_REPOSITORY: \$\{APT_REPOSITORY:-\}'
         $agent | Should-MatchString '(?m)APT_SECURITY_REPOSITORY: \$\{APT_SECURITY_REPOSITORY:-\}'
 
         $bootstrap = Get-Content (Join-Path $PSScriptRoot "..\Bootstrap-TeamCity.ps1") -Raw
         $bootstrap | Should-MatchString 'podman machine ssh'
-        $bootstrap | Should-MatchString 'mkdir -p /opt/teamcity-agent/work /opt/teamcity-agent/temp /opt/teamcity-agent/logs /opt/teamcity-agent/plugins /opt/teamcity-agent/system /opt/teamcity-agent/tools'
+        $bootstrap | Should-MatchString 'TEAMCITY_AGENT_ROOT'
+        $bootstrap | Should-MatchString 'mkdir -p \$agentRoot.*chown -R 1000:1000 \$agentRoot'
 
         $dockerfile = Get-Content (Join-Path $PSScriptRoot "..\agent\Dockerfile") -Raw
         $dockerfile | Should-NotMatchString 'git config --system --add safe\.directory /repo/\.git'
@@ -70,6 +83,16 @@ Describe "TeamCity bootstrap definitions" {
         $dockerfile | Should-MatchString '(?ms)RUN <<INSTALL_TOOLS\s+set -eu\s+.*?INSTALL_TOOLS'
         $dockerfile | Should-NotMatchString 'sed -i'
         $dockerfile | Should-NotMatchString '(?m)^if '
+        $dockerfile | Should-MatchString 'run-agent\.sh /run-agent\.sh'
+
+        $launcher = Get-Content (Join-Path $PSScriptRoot "..\agent\run-agent.sh") -Raw
+        $launcher | Should-MatchString 'TEAMCITY_AGENT_HOME'
+        $launcher | Should-MatchString 'TEAMCITY_AGENT_ROOT'
+        $launcher | Should-MatchString "cat /etc/hostname"
+        $launcher | Should-MatchString "podman inspect --format '{{\.Name}}'"
+        $launcher | Should-MatchString 'CONFIG_FILE="\$\{TEAMCITY_AGENT_CONFIG_FILE:-\$AGENT_DIST/conf/buildAgent\.properties\}"'
+        $launcher | Should-MatchString 'cp -a "\$AGENT_TEMPLATE/\." "\$AGENT_DIST/"'
+        $launcher | Should-MatchString '"\$AGENT_DIST/bin/agent\.sh" start'
     }
 }
 
@@ -164,6 +187,8 @@ InModuleScope TeamCityBootstrap {
             $module | Should-NotMatchString 'Invoke-TeamCityRead|Invoke-WebRequest|versionedSettings/status|loadSettings|drift|converg'
             $module | Should-MatchString 'healthCheck/ready'
             $module | Should-MatchString '/app/rest/agents'
+            $module | Should-MatchString 'authorized:any,connected:true'
+            $module | Should-MatchString '\(\?:-\\d\+\)\?\$'
             $module | Should-MatchString '/authorized'
             $module | Should-MatchString 'Invoke-RestMethod.*SkipHttpErrorCheck.*StatusCodeVariable'
             $module | Should-MatchString 'Write-Warning'

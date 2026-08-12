@@ -89,11 +89,15 @@ function Set-TeamCityAgentAuthorized {
         [int] $PollIntervalSeconds = 3
     )
 
-    $locator = [Uri]::EscapeDataString("authorized:any,name:$AgentName")
+    $locator = [Uri]::EscapeDataString("authorized:any,connected:true")
+    $agentNamePattern = '^' + [regex]::Escape($AgentName) + '(?:-\d+)?$'
     do {
         $statusCode = 0
         $agents = Invoke-RestMethod -Headers $Session.WriteHeaders -Uri "$($Session.ServerUrl)/app/rest/agents?locator=$locator" -SkipHttpErrorCheck -StatusCodeVariable statusCode
-        $agent = @($agents.agent) | Where-Object name -eq $AgentName | Select-Object -First 1
+        $agent = @($agents.agent) |
+            Where-Object name -Match $agentNamePattern |
+            Sort-Object @{ Expression = { $_.name -ne $AgentName } }, name |
+            Select-Object -First 1
         if ($statusCode -eq 200 -and $null -ne $agent) {
             break
         }
@@ -102,10 +106,15 @@ function Set-TeamCityAgentAuthorized {
         Start-Sleep -Seconds $PollIntervalSeconds
     } while ($true)
 
+    if ($agent.name -ne $AgentName) {
+        Write-Warning "TeamCity registered agent '$AgentName' as '$($agent.name)' because the preferred name was already reserved."
+    }
+    $registeredAgentName = $agent.name
+
     $authorizedStatusCode = 0
     $authorized = Invoke-RestMethod -Headers $Session.WriteHeaders -Uri "$($Session.ServerUrl)$($agent.href)/authorized" -SkipHttpErrorCheck -StatusCodeVariable authorizedStatusCode
     if ($authorizedStatusCode -eq 200 -and $authorized.ToString().Trim() -eq "true") {
-        Write-Host "TeamCity agent '$AgentName' is already authorized."
+        Write-Host "TeamCity agent '$registeredAgentName' is already authorized."
         return
     }
 
@@ -117,10 +126,10 @@ function Set-TeamCityAgentAuthorized {
     $authorizationHeaders.Accept = "text/plain"
     Invoke-RestMethod -Method Put -Headers $authorizationHeaders -ContentType "text/plain" -Body "true" -Uri "$($Session.ServerUrl)$($agent.href)/authorized" -SkipHttpErrorCheck -StatusCodeVariable authorizationStatusCode | Out-Null
     if ($authorizationStatusCode -lt 200 -or $authorizationStatusCode -ge 300) {
-        throw "TeamCity could not authorize agent '$AgentName' (HTTP $authorizationStatusCode)."
+        throw "TeamCity could not authorize agent '$registeredAgentName' (HTTP $authorizationStatusCode)."
     }
 
-    Write-Host "Authorized TeamCity agent '$AgentName'."
+    Write-Host "Authorized TeamCity agent '$registeredAgentName'."
 }
 
 function Invoke-TeamCityWrite {

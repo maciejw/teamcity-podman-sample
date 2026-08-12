@@ -14,6 +14,6 @@ SQL Server and Kafka use random host ports. Each test run creates uniquely named
 
 ## TeamCity
 
-The manual build starts the inert service in `compose.yaml` through TeamCity's Compose runner. This gives TeamCity a build-scoped network and causes its SDK wrapper to join that network. The wrapper explicitly receives `TEAMCITY_DOCKER_NETWORK`; the fixtures require that variable whenever `TEAMCITY_VERSION` is present and attach SQL Server and Kafka to it.
+The manual build starts the inert service in `compose.yaml` through TeamCity's Compose runner. `COMPOSE_PROJECT_NAME` combines the agent name and TeamCity build type ID, separating concurrent builds that run on different agents. The agent's Compose compatibility launcher normalizes TeamCity's mixed-case build type ID to Compose's lowercase naming rules. TeamCity registers the resulting default network as `TEAMCITY_DOCKER_NETWORK`, and its SDK wrapper joins it. The wrapper explicitly receives `TEAMCITY_DOCKER_NETWORK`; the fixtures require that variable whenever `TEAMCITY_VERSION` is present and attach SQL Server and Kafka to it.
 
 The wrapper mounts the rootless Podman socket and sets `DOCKER_HOST` and `TESTCONTAINERS_HOST_OVERRIDE`. SQL Server uses container DNS on port 1433, while Kafka advertises its internal listener. TeamCity's Compose teardown removes the anchor and network; fixture disposal and Ryuk remove the test containers.
